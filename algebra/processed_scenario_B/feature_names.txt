@@ -1,0 +1,7 @@
+age
+sex_encoded
+creatinine
+bilirubin
+glucose
+urine_volume
+urine_pH

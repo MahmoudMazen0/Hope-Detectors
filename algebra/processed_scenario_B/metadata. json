@@ -1,0 +1,51 @@
+{
+    "scenario": "B",
+    "description": "Mixed dataset - Detect cancer (healthy vs cancer)",
+    "dataset": {
+        "total_patients": 600,
+        "healthy_patients": 256,
+        "cancer_patients": 344
+    },
+    "features": {
+        "names": [
+            "age",
+            "sex_encoded",
+            "creatinine",
+            "bilirubin",
+            "glucose",
+            "urine_volume",
+            "urine_pH"
+        ],
+        "count": 7,
+        "type": "Routine blood/urine tests only"
+    },
+    "target": {
+        "name": "has_cancer",
+        "type": "Binary",
+        "classes": {
+            "0": "Healthy / No cancer (diagnosis 1)",
+            "1": "Has cancer (diagnosis 2 or 3)"
+        }
+    },
+    "preprocessing": {
+        "normalized": true,
+        "normalization_method": "StandardScaler (Z-score)",
+        "balanced": false,
+        "balance_method": "None",
+        "missing_values": "None",
+        "imbalance_ratio": 1.3414634146341464
+    },
+    "data_splits": {
+        "train_samples": 480,
+        "test_samples": 120,
+        "test_ratio": 0.2,
+        "train_distribution": {
+            "0": 205,
+            "1": 275
+        },
+        "test_distribution": {
+            "0": 51,
+            "1": 69
+        }
+    }
+}

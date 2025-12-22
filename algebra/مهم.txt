@@ -1,0 +1,26 @@
+
+
+The preprocessing is complete!  Here's what you need to know:
+
+📁 DATA LOCATION:
+- Scenario A: data/processed_scenario_A/
+- Scenario B: data/processed_scenario_B/
+
+✅ READY TO USE:
+- Data is normalized (mean=0, std=1)
+- Classes are balanced with SMOTE
+- Train/test split: 80/20
+- 7 features (routine tests only)
+
+⚠️ IMPORTANT:
+1. DO NOT normalize again!
+2. DO NOT balance test data! 
+3. USE saved scaler for new predictions
+4. READ metadata.json first
+
+📊 CHOOSE ONE:
+- Scenario A: Predict stage (1, 2, 3) if all have cancer
+- Scenario B: Detect cancer (0, 1) if mixed dataset
+
+🚀 START TRAINING:
+Load X_train. csv, y_train.csv and start building models! 

@@ -1,0 +1,28 @@
+{
+    "feature_names": [
+        "age",
+        "sex_encoded",
+        "creatinine",
+        "bilirubin",
+        "glucose",
+        "urine_volume",
+        "urine_pH",
+        "bili_creat_ratio",
+        "bili_creat_product",
+        "age_squared",
+        "age_bili",
+        "age_creat",
+        "glucose_age",
+        "urine_ratio",
+        "risk_score"
+    ],
+    "n_features": 15,
+    "train_size": 480,
+    "test_size": 120,
+    "best_model": "SVM",
+    "best_weight": "Moderate (1:2)",
+    "best_f1_score": 0.8609271523178808,
+    "best_recall": 0.9420289855072463,
+    "best_precision": 0.7926829268292683,
+    "best_roc_auc": 0.8753907360045468
+}

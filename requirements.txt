@@ -1,0 +1,7 @@
+customtkinter
+pandas
+numpy
+joblib
+scikit-learn
+pillow
+openpyxl

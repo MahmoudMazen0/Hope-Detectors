@@ -1,0 +1,53 @@
+{
+    "scenario": "A",
+    "description": "All patients have cancer - Predict stage (severity)",
+    "dataset": {
+        "total_patients": 600,
+        "all_have_cancer": true
+    },
+    "features": {
+        "names": [
+            "age",
+            "sex_encoded",
+            "creatinine",
+            "bilirubin",
+            "glucose",
+            "urine_volume",
+            "urine_pH"
+        ],
+        "count": 7,
+        "type": "Routine blood/urine tests only"
+    },
+    "target": {
+        "name": "stage",
+        "type": "Multi-class",
+        "classes": {
+            "1": "Stage 1 - Early (Low-risk)",
+            "2": "Stage 2 - Intermediate (Moderate-risk)",
+            "3": "Stage 3 - Advanced (High-risk)"
+        }
+    },
+    "preprocessing": {
+        "normalized": true,
+        "normalization_method": "StandardScaler (Z-score)",
+        "balanced": true,
+        "balance_method": "SMOTE (training data only)",
+        "missing_values": "None",
+        "imbalance_ratio": 1.9711538461538463
+    },
+    "data_splits": {
+        "train_samples": 615,
+        "test_samples": 120,
+        "test_ratio": 0.2,
+        "train_distribution": {
+            "1": 205,
+            "2": 205,
+            "3": 205
+        },
+        "test_distribution": {
+            "1": 51,
+            "2": 43,
+            "3": 26
+        }
+    }
+}
