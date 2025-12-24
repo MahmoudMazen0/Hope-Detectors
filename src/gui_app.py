@@ -123,66 +123,6 @@ class MedicalDashboardApp(ctk.CTk):
         # Show selection page directly (no splash screen)
         self.create_selection_page()
     
-    # ============== SPLASH SCREEN ==============
-    def show_splash_screen(self):
-        """Display fullscreen splash screen with background image only."""
-        # Make window fullscreen
-        self.attributes('-fullscreen', True)
-        self.update()
-        
-        # Get screen dimensions
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        # Create splash frame
-        self.splash_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.splash_frame.pack(fill="both", expand=True)
-        
-        # Load and display background image
-        bg_path = os.path.join(self.assets_dir, "background.jpg")
-        if os.path.exists(bg_path):
-            bg_image = Image.open(bg_path)
-            bg_image = bg_image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
-            self.bg_photo = ImageTk.PhotoImage(bg_image)
-            
-            self.bg_label = ctk.CTkLabel(
-                self.splash_frame,
-                image=self.bg_photo,
-                text=""
-            )
-            self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        else:
-            # Fallback gradient background
-            self.splash_frame.configure(fg_color=COLORS["bg_main"])
-        
-        # Schedule transition to main content after 3 seconds
-        self.after(3000, self.end_splash_screen)
-    
-    def end_splash_screen(self):
-        """End splash screen and show main application."""
-        # Cancel any pending animation
-        if self.animation_id:
-            self.after_cancel(self.animation_id)
-        
-        # Destroy splash frame
-        if hasattr(self, 'splash_frame'):
-            self.splash_frame.destroy()
-        
-        # Exit fullscreen and set normal window
-        self.attributes('-fullscreen', False)
-        self.geometry("1400x800")
-        
-        # Center window on screen
-        self.update()
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width - 1400) // 2
-        y = (screen_height - 800) // 2
-        self.geometry(f"1400x800+{x}+{y}")
-        
-        # Show selection page
-        self.create_selection_page()
-    
     # ============== SELECTION PAGE ==============
     def create_selection_page(self):
         """Create the main selection page with CT Scans and Lab Tests options."""

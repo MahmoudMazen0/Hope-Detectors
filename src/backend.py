@@ -92,7 +92,6 @@ class MedicalPredictor:
     """Class to handle model loading and predictions."""
     
     def __init__(self, base_path=None):
-        # Models are in parent directory (Gui folder)
         if base_path:
             self.base_path = base_path
         else:
@@ -100,6 +99,19 @@ class MedicalPredictor:
         self.model = None
         self.scaler = None
         self.current_model_name = None
+    
+    def _get_confidence(self, scaled):
+        """Get confidence score from model prediction."""
+        try:
+            if hasattr(self.model, 'predict_proba'):
+                proba = self.model.predict_proba(scaled)[0]
+                return max(proba) * 100
+            elif hasattr(self.model, 'decision_function'):
+                decision = abs(self.model.decision_function(scaled)[0])
+                return min(100, 50 + decision * 10)
+            return 85.0
+        except Exception:
+            return 85.0
     
     def load_model(self, model_name="SVM (Best)"):
         """Load a model and scaler."""
@@ -171,20 +183,7 @@ class MedicalPredictor:
         # Scale and predict
         scaled = self.scaler.transform(features)
         prediction = self.model.predict(scaled)[0]
-        
-        # Get confidence score
-        try:
-            if hasattr(self.model, 'predict_proba'):
-                proba = self.model.predict_proba(scaled)[0]
-                confidence = max(proba) * 100
-            elif hasattr(self.model, 'decision_function'):
-                # For SVM without probability
-                decision = abs(self.model.decision_function(scaled)[0])
-                confidence = min(100, 50 + decision * 10)  # Scale to percentage
-            else:
-                confidence = 85.0  # Default
-        except:
-            confidence = 85.0
+        confidence = self._get_confidence(scaled)
         
         return prediction, prediction == 1, confidence
     
@@ -203,22 +202,10 @@ class MedicalPredictor:
         }
         features = self.create_features(normalized)
         
-        # For pre-normalized data, apply scaler to get proper derived feature normalization
+        # For pre-normalized data, apply scaler
         scaled = self.scaler.transform(features)
         prediction = self.model.predict(scaled)[0]
-        
-        # Get confidence
-        try:
-            if hasattr(self.model, 'predict_proba'):
-                proba = self.model.predict_proba(scaled)[0]
-                confidence = max(proba) * 100
-            elif hasattr(self.model, 'decision_function'):
-                decision = abs(self.model.decision_function(scaled)[0])
-                confidence = min(100, 50 + decision * 10)
-            else:
-                confidence = 85.0
-        except:
-            confidence = 85.0
+        confidence = self._get_confidence(scaled)
         
         return prediction, prediction == 1, confidence
     
