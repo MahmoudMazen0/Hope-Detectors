@@ -37,28 +37,13 @@ wheels/
 .installed.cfg
 *.egg
 
-# CatBoost
-catboost_info/
-catboost/
-
-# LightGBM
-lightgbm/
-
-# XGBoost
-xgboost/
-
-# Model training outputs (الملفات الكبيرة للموديلات - اختياري)
-# Uncomment these if you don't want to upload model files:
-# *.pkl
-# *.h5
-# *.keras
-
-# Data files (ملفات البيانات المؤقتة)
-ct_*.csv
-patient_batch_sample.csv
-
-# Large data directories
+# Large data directories (not for upload)
 algebra ct/
+algebra/
+
+# Temporary result files
+output/*.csv
+ct_*.csv
 
 # OS files
 .DS_Store

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Hope Detectors](gui%20code/logo.png)
+![Hope Detectors](assets/logo.png)
 
 **AI-powered Cancer Detection System using CT Scans and Lab Tests**
 
@@ -42,30 +42,36 @@ Hope Detectors is a professional medical diagnostics application designed to ass
 
 ```
 Hope-Detectors/
-├── 📁 gui code/
-│   ├── gui_app.py          # Main GUI application
-│   ├── backend.py          # ML logic and predictions
-│   ├── background.jpg      # Splash screen
-│   ├── page_background.png # Dashboard background
-│   ├── logo.png            # Application logo
-│   └── run_app.bat         # Quick launch script
-├── 📁 Models/
-│   ├── FINAL_MODEL_SVM.pkl
-│   ├── FINAL_SCALER.pkl
-│   ├── random_forest_aggressive.pkl
-│   ├── logistic_regression_moderate.pkl
-│   ├── stacked_meta_model_15features.pkl
-│   └── ... (other model files)
-├── 📄 requirements.txt     # Python dependencies
-├── 📄 config.json          # Application configuration
-└── 📄 README.md            # This file
+├── src/                          # Source Code
+│   ├── gui_app.py               # Main GUI application
+│   └── backend.py               # ML logic and predictions
+│
+├── models/                       # Machine Learning Models
+│   ├── lab_tests/               # Lab Test Models
+│   │   ├── svm/                 # SVM models
+│   │   ├── random_forest/       # Random Forest models
+│   │   ├── logistic_regression/ # Logistic Regression
+│   │   ├── catboost/            # CatBoost models
+│   │   ├── lightgbm/            # LightGBM models
+│   │   └── stacked/             # Stacked ensemble models
+│   ├── ct_scans/                # CT Scan deep learning model
+│   └── scalers/                 # Feature scalers
+│
+├── config/                       # Configuration Files
+├── assets/                       # Images & UI Assets
+├── data/                         # Sample Data & Results
+├── docs/                         # Documentation
+├── output/                       # Results Output
+│
+├── requirements.txt
+├── run_app.bat
+└── README.md
 ```
 
 ## 🔧 Installation
 
 ### Prerequisites
 - Python 3.11 or higher
-- pip package manager
 
 ### Setup
 
@@ -78,19 +84,10 @@ Hope-Detectors/
 2. **Create virtual environment**
    ```bash
    python -m venv venv311
+   .\venv311\Scripts\activate
    ```
 
-3. **Activate virtual environment**
-   - Windows:
-     ```bash
-     .\venv311\Scripts\activate
-     ```
-   - Linux/macOS:
-     ```bash
-     source venv311/bin/activate
-     ```
-
-4. **Install dependencies**
+3. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
@@ -104,48 +101,16 @@ run_app.bat
 
 ### Manual Start
 ```bash
-cd "gui code"
-python gui_app.py
+.\venv311\Scripts\activate
+python src\gui_app.py
 ```
-
-Or with virtual environment:
-```bash
-.\venv311\Scripts\python.exe "gui code\gui_app.py"
-```
-
-## 📊 Model Performance
-
-| Model | Accuracy | Precision | Recall |
-|-------|----------|-----------|--------|
-| SVM | **Best** | High | High |
-| Random Forest | Good | Good | Good |
-| LightGBM | Good | Good | Good |
-| CatBoost | Good | Good | Good |
-| Stacked Ensemble | Good | Good | Good |
 
 ## 🛠️ Technologies Used
 
-- **Frontend**: CustomTkinter (Modern GUI)
+- **Frontend**: CustomTkinter
 - **Backend**: Python 3.11
 - **ML/DL**: TensorFlow, scikit-learn, LightGBM, CatBoost
 - **Image Processing**: Pillow, pydicom
-- **Data Processing**: Pandas, NumPy
-
-## 📦 Dependencies
-
-```
-customtkinter
-pandas
-numpy
-joblib
-scikit-learn
-pillow
-openpyxl
-tensorflow
-lightgbm
-catboost
-pydicom
-```
 
 ## 👥 Team
 
@@ -153,7 +118,7 @@ pydicom
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file.
 
 ---
 

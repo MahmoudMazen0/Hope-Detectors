@@ -1,0 +1,27 @@
+{
+    "date": "2025-12-06 12:35:27",
+    "total_models_trained": 6,
+    "xgboost_models": 3,
+    "lightgbm_models": 3,
+    "best_overall_model": "XGBoost-2 (Aggressive)",
+    "best_recall": 0.8695652173913043,
+    "best_f1_score": 0.8275862068965517,
+    "n_features": 7,
+    "n_train_samples": 480,
+    "n_test_samples": 120,
+    "training_time": "~5 minutes",
+    "models_saved": {
+        "xgboost": [
+            "xgb_model_1_moderate.pkl",
+            "xgb_model_2_aggressive.pkl",
+            "xgb_model_3_finetuned.pkl",
+            "xgb_best_model.pkl"
+        ],
+        "lightgbm": [
+            "lgb_model_1_moderate.pkl",
+            "lgb_model_2_aggressive.pkl",
+            "lgb_model_3_finetuned.pkl",
+            "lgb_best_model.pkl"
+        ]
+    }
+}

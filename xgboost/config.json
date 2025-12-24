@@ -1,9 +1,0 @@
-{
-    "date": "2025-12-06 12:21:22",
-    "best_model": "Model 2",
-    "best_f1_score": 0.8275862068965517,
-    "best_recall": 0.8695652173913043,
-    "n_features": 7,
-    "n_train_samples": 480,
-    "n_test_samples": 120
-}

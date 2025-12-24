@@ -1,5 +1,5 @@
 @echo off
-echo Starting Medical Diagnostics Dashboard...
-cd /d "%~dp0\gui code"
-call .\venv311\Scripts\python.exe gui_app.py
+cd /d "%~dp0"
+call venv311\Scripts\activate
+python src\gui_app.py
 pause

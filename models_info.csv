@@ -1,4 +1,0 @@
-﻿filename,model,weight,f1_score,recall,precision
-saved_models/svm_moderate.pkl,SVM,Moderate (1:2),0.8609271523178808,0.9420289855072463,0.7926829268292683
-saved_models/logistic_regression_moderate.pkl,Logistic Regression,Moderate (1:2),0.8421052631578947,0.927536231884058,0.7710843373493976
-saved_models/random_forest_aggressive.pkl,Random Forest,Aggressive (1:3),0.8201438848920863,0.8260869565217391,0.8142857142857143
