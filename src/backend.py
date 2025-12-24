@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import sys
 from datetime import datetime
 
 # For CT Model
@@ -95,7 +96,13 @@ class MedicalPredictor:
         if base_path:
             self.base_path = base_path
         else:
-            self.base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            # Detect if running from PyInstaller bundle
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                # Running in PyInstaller bundle
+                self.base_path = sys._MEIPASS
+            else:
+                # Running in normal Python environment
+                self.base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.model = None
         self.scaler = None
         self.current_model_name = None
