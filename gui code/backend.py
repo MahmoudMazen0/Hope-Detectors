@@ -18,6 +18,23 @@ except ImportError:
     except ImportError:
         keras = None
 
+# For CatBoost and LightGBM models
+try:
+    import catboost
+except ImportError:
+    catboost = None
+
+try:
+    import lightgbm
+except ImportError:
+    lightgbm = None
+
+# For DICOM images
+try:
+    import pydicom
+except ImportError:
+    pydicom = None
+
 from PIL import Image
 
 
@@ -43,12 +60,31 @@ FEATURE_COLUMNS = [
 
 # Available models
 AVAILABLE_MODELS = {
+    # SVM Models
     "SVM (Best)": "FINAL_MODEL_SVM.pkl",
     "SVM Moderate": "svm_moderate.pkl",
+    
+    # Logistic Regression
     "Logistic Regression": "logistic_regression_moderate.pkl",
+    
+    # Random Forest
     "Random Forest": "random_forest_aggressive.pkl",
+    
+    # LightGBM Models
     "LightGBM Best": "lightgbm/lgb_best_model.pkl",
+    "LightGBM Moderate": "lightgbm/lgb_model_1_moderate.pkl",
+    "LightGBM Aggressive": "lightgbm/lgb_model_2_aggressive.pkl",
+    "LightGBM Finetuned": "lightgbm/lgb_model_3_finetuned.pkl",
+    
+    # CatBoost Models
     "CatBoost Best": "catboost/cat_best_model.pkl",
+    "CatBoost Moderate": "catboost/cat_model_1_moderate.pkl",
+    "CatBoost Aggressive": "catboost/cat_model_2_aggressive.pkl",
+    "CatBoost Finetuned": "catboost/cat_model_3_finetuned.pkl",
+    
+    # Stacked Models
+    "Stacked Meta Model": "stacked_meta_model.pkl",
+    "Stacked Meta Model (15 Features)": "stacked_meta_model_15features.pkl",
 }
 
 
@@ -332,14 +368,31 @@ class CTPredictor:
         Preprocess image for model input.
         
         Args:
-            image_path: Path to image file (PNG, JPG, JPEG)
+            image_path: Path to image file (PNG, JPG, JPEG, DICOM)
             
         Returns:
             numpy array: Preprocessed image ready for prediction
         """
         try:
-            # Load and convert to RGB
-            img = Image.open(image_path).convert('RGB')
+            # Check if DICOM file
+            if image_path.lower().endswith('.dcm'):
+                if pydicom is None:
+                    raise ValueError("pydicom not installed. Install with: pip install pydicom")
+                
+                # Read DICOM file
+                ds = pydicom.dcmread(image_path)
+                img_array = ds.pixel_array
+                
+                # Normalize to 0-255
+                img_array = img_array.astype(np.float32)
+                img_array = (img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255
+                img_array = img_array.astype(np.uint8)
+                
+                # Convert to PIL Image and then to RGB
+                img = Image.fromarray(img_array).convert('RGB')
+            else:
+                # Regular image (PNG, JPG, etc.)
+                img = Image.open(image_path).convert('RGB')
             
             # Resize to model input size
             img = img.resize(self.input_size, Image.Resampling.LANCZOS)

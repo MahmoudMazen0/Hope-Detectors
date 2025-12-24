@@ -5,3 +5,7 @@ joblib
 scikit-learn
 pillow
 openpyxl
+tensorflow
+lightgbm
+catboost
+pydicom

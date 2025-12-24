@@ -3,9 +3,48 @@ Medical Diagnostics Dashboard - GUI Module
 Uses backend.py for ML logic and predictions.
 """
 
-import customtkinter as ctk
 import os
+import sys
+import subprocess
+
+# =========================================================================
+# AUTO-RELAUNCH WITH CORRECT PYTHON ENVIRONMENT
+# This ensures binary compatibility (numpy, etc.) by enforcing venv usage.
+# =========================================================================
+def ensure_correct_environment():
+    """Relaunch script with venv python if running with incorrect interpreter."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Locate venv python
+    venv_python = os.path.join(current_dir, 'venv311', 'Scripts', 'python.exe')
+    if not os.path.exists(venv_python):
+        # Check parent directory (common structure)
+        venv_python = os.path.join(os.path.dirname(current_dir), 'venv311', 'Scripts', 'python.exe')
+    
+    # Use venv if found
+    if os.path.exists(venv_python):
+        # Normalize for case-insensitive comparison
+        running_python = os.path.abspath(sys.executable).lower()
+        target_python = os.path.abspath(venv_python).lower()
+        
+        # If mismatch, relaunch!
+        if running_python != target_python:
+            print(f"[!] Environment Mismatch Detected!")
+            print(f"Running: {running_python}")
+            print(f"Target:  {target_python}")
+            print(f"[*] Relaunching with correct environment...")
+            
+            # Execute and wait
+            ret_code = subprocess.call([target_python, __file__] + sys.argv[1:])
+            sys.exit(ret_code)
+
+# Run check immediately
+ensure_correct_environment()
+
+import customtkinter as ctk
 from tkinter import messagebox
+from PIL import Image, ImageTk
+from datetime import datetime
 
 # Import backend (same directory)
 from backend import MedicalPredictor, AVAILABLE_MODELS, load_patient_file, save_results, CTPredictor
@@ -47,16 +86,20 @@ class MedicalDashboardApp(ctk.CTk):
         self.geometry("1400x800")
         self.configure(fg_color=COLORS["bg_main"])
         
+        # Get script directory for image paths
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        
         # Backend predictor
         self.predictor = MedicalPredictor()
         
-        # CT Predictor
-        ct_model_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "algebra ct",
-            "final_model.keras"
-        )
+        # CT Predictor - use absolute path from script location
+        gui_dir = os.path.dirname(self.script_dir)  # Go up to Gui folder
+        ct_model_path = os.path.join(gui_dir, "algebra ct", "final_model.keras")
+        
+        
         self.ct_predictor = CTPredictor(ct_model_path)
+        
+
         
         # UI Variables
         self.selected_model_name = ctk.StringVar(value="SVM (Best)")
@@ -72,94 +115,229 @@ class MedicalDashboardApp(ctk.CTk):
         self.loaded_patients_df = None
         self.patient_names = []
         
-        # Show selection page first
+        # Animation state
+        self.animation_id = None
+        
+        # Show selection page directly (no splash screen)
+        self.create_selection_page()
+    
+    # ============== SPLASH SCREEN ==============
+    def show_splash_screen(self):
+        """Display fullscreen splash screen with background image only."""
+        # Make window fullscreen
+        self.attributes('-fullscreen', True)
+        self.update()
+        
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Create splash frame
+        self.splash_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.splash_frame.pack(fill="both", expand=True)
+        
+        # Load and display background image
+        bg_path = os.path.join(self.script_dir, "background.jpg")
+        if os.path.exists(bg_path):
+            bg_image = Image.open(bg_path)
+            bg_image = bg_image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
+            self.bg_photo = ImageTk.PhotoImage(bg_image)
+            
+            self.bg_label = ctk.CTkLabel(
+                self.splash_frame,
+                image=self.bg_photo,
+                text=""
+            )
+            self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        else:
+            # Fallback gradient background
+            self.splash_frame.configure(fg_color=COLORS["bg_main"])
+        
+        # Schedule transition to main content after 3 seconds
+        self.after(3000, self.end_splash_screen)
+    
+    def end_splash_screen(self):
+        """End splash screen and show main application."""
+        # Cancel any pending animation
+        if self.animation_id:
+            self.after_cancel(self.animation_id)
+        
+        # Destroy splash frame
+        if hasattr(self, 'splash_frame'):
+            self.splash_frame.destroy()
+        
+        # Exit fullscreen and set normal window
+        self.attributes('-fullscreen', False)
+        self.geometry("1400x800")
+        
+        # Center window on screen
+        self.update()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - 1400) // 2
+        y = (screen_height - 800) // 2
+        self.geometry(f"1400x800+{x}+{y}")
+        
+        # Show selection page
         self.create_selection_page()
     
     # ============== SELECTION PAGE ==============
     def create_selection_page(self):
         """Create the main selection page with CT Scans and Lab Tests options."""
-        self.selection_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.selection_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_main"])
         self.selection_frame.pack(fill="both", expand=True)
         
-        # Title
-        title_frame = ctk.CTkFrame(self.selection_frame, fg_color=COLORS["bg_header"], height=100, corner_radius=0)
-        title_frame.pack(fill="x")
-        title_frame.pack_propagate(False)
+        # Add background image - covers entire frame
+        bg_path = os.path.join(self.script_dir, "page_background.png")
+        if os.path.exists(bg_path):
+            self.update()
+            frame_width = self.winfo_width() or 1400
+            frame_height = self.winfo_height() or 800
+            
+            bg_image = Image.open(bg_path)
+            bg_image = bg_image.resize((frame_width, frame_height), Image.Resampling.LANCZOS)
+            self.page_bg_photo = ImageTk.PhotoImage(bg_image)
+            
+            bg_label = ctk.CTkLabel(
+                self.selection_frame,
+                image=self.page_bg_photo,
+                text=""
+            )
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        # Title frame with logo at top - using place to overlay on background
+        title_frame = ctk.CTkFrame(self.selection_frame, fg_color=COLORS["bg_header"], height=90, corner_radius=0)
+        title_frame.place(x=0, y=0, relwidth=1)
+        
+        # Add logo to header
+        logo_path = os.path.join(self.script_dir, "logo.png")
+        if os.path.exists(logo_path):
+            header_logo = Image.open(logo_path)
+            header_logo = header_logo.resize((65, 65), Image.Resampling.LANCZOS)
+            self.header_logo_photo = ImageTk.PhotoImage(header_logo)
+            
+            logo_label = ctk.CTkLabel(
+                title_frame,
+                image=self.header_logo_photo,
+                text=""
+            )
+            logo_label.pack(side="left", padx=20, pady=12)
         
         title = ctk.CTkLabel(
             title_frame,
-            text="🏥 Medical Diagnostics System",
-            font=ctk.CTkFont(size=36, weight="bold"),
+            text="Hope Detectors - Medical Diagnostics",
+            font=ctk.CTkFont(size=28, weight="bold"),
             text_color=COLORS["text_title"]
         )
-        title.pack(pady=30)
+        title.pack(side="left", padx=10, pady=25)
         
-        # Subtitle
+        # Subtitle - placed directly on background
         subtitle = ctk.CTkLabel(
             self.selection_frame,
             text="Choose your diagnostic module",
-            font=ctk.CTkFont(size=18),
-            text_color=COLORS["text_secondary"]
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#FFFFFF",
+            fg_color="transparent"
         )
-        subtitle.pack(pady=(40, 30))
+        subtitle.place(relx=0.5, y=140, anchor="center")
         
-        # Cards Container
-        cards_container = ctk.CTkFrame(self.selection_frame, fg_color="transparent")
-        cards_container.pack(expand=True, pady=20)
-        
-        # CT Scans Card
+        # Cards Container - placed directly on background (no frame wrapper)
+
+        # CT Scans Card - placed directly on background
         ct_card = ctk.CTkFrame(
-            cards_container,
-            fg_color=COLORS["bg_card"],
+            self.selection_frame,
+            fg_color=("#0a0f1a", "#0a0f1a"),  # Dark semi-transparent look
             corner_radius=20,
-            border_width=3,
-            border_color=COLORS["glow_cyan"]
+            border_width=0,
+            width=340,
+            height=400
         )
-        ct_card.pack(side="left", padx=30, ipadx=40, ipady=30)
+        ct_card.place(relx=0.32, rely=0.55, anchor="center")
+        ct_card.pack_propagate(False)
         
-        ctk.CTkLabel(ct_card, text="🩻", font=ctk.CTkFont(size=64)).pack(pady=(20, 10))
-        ctk.CTkLabel(ct_card, text="CT Scans", font=ctk.CTkFont(size=24, weight="bold"), 
-                     text_color=COLORS["text_title"]).pack(pady=5)
-        ctk.CTkLabel(ct_card, text="Cancer Detection from\nCT Scan Images", 
-                     text_color=COLORS["text_secondary"], justify="center").pack(pady=10)
+        # CT Icon - Large
+        ct_icon_label = ctk.CTkLabel(
+            ct_card, 
+            text="🔬",  # CT Scanner icon
+            font=ctk.CTkFont(size=80)
+        )
+        ct_icon_label.pack(pady=(40, 15))
+        
+        ctk.CTkLabel(
+            ct_card, 
+            text="CT Scans", 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=COLORS["glow_cyan"]
+        ).pack(pady=8)
+        
+        ctk.CTkLabel(
+            ct_card, 
+            text="Cancer Detection from\nCT Scan Images", 
+            text_color=COLORS["text_secondary"], 
+            font=ctk.CTkFont(size=14),
+            justify="center"
+        ).pack(pady=10)
         
         ctk.CTkButton(
             ct_card,
             text="Open CT Module",
             command=self.open_ct_scans,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color=COLORS["primary"],
-            hover_color=COLORS["primary_hover"],
-            height=45,
-            corner_radius=10
-        ).pack(pady=(20, 10), padx=20, fill="x")
+            font=ctk.CTkFont(size=16, weight="bold"),
+            fg_color=COLORS["glow_cyan"],
+            hover_color=COLORS["glow_blue"],
+            text_color="#0B1120",
+            height=50,
+            width=250,
+            corner_radius=12
+        ).pack(pady=(25, 30))
         
-        # Lab Tests Card
+        # Lab Tests Card - placed directly on background
         lab_card = ctk.CTkFrame(
-            cards_container,
-            fg_color=COLORS["bg_card"],
+            self.selection_frame,
+            fg_color=("#0a0f1a", "#0a0f1a"),  # Dark semi-transparent look
             corner_radius=20,
-            border_width=3,
-            border_color=COLORS["glow_blue"]
+            border_width=0,
+            width=340,
+            height=400
         )
-        lab_card.pack(side="left", padx=30, ipadx=40, ipady=30)
+        lab_card.place(relx=0.68, rely=0.55, anchor="center")
+        lab_card.pack_propagate(False)
         
-        ctk.CTkLabel(lab_card, text="🧪", font=ctk.CTkFont(size=64)).pack(pady=(20, 10))
-        ctk.CTkLabel(lab_card, text="Lab Tests", font=ctk.CTkFont(size=24, weight="bold"), 
-                     text_color=COLORS["text_title"]).pack(pady=5)
-        ctk.CTkLabel(lab_card, text="Pancreatic Cancer Detection\nfrom Blood & Urine Tests", 
-                     text_color=COLORS["text_secondary"], justify="center").pack(pady=10)
+        # Lab Icon - Large
+        lab_icon_label = ctk.CTkLabel(
+            lab_card, 
+            text="�",  # DNA/Lab icon
+            font=ctk.CTkFont(size=80)
+        )
+        lab_icon_label.pack(pady=(40, 15))
+        
+        ctk.CTkLabel(
+            lab_card, 
+            text="Lab Tests", 
+            font=ctk.CTkFont(size=28, weight="bold"), 
+            text_color=COLORS["glow_blue"]
+        ).pack(pady=8)
+        
+        ctk.CTkLabel(
+            lab_card, 
+            text="Pancreatic Cancer Detection\nfrom Blood & Urine Tests", 
+            text_color=COLORS["text_secondary"], 
+            font=ctk.CTkFont(size=14),
+            justify="center"
+        ).pack(pady=10)
         
         ctk.CTkButton(
             lab_card,
             text="Open Lab Module",
             command=self.open_lab_tests,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=16, weight="bold"),
             fg_color=COLORS["glow_blue"],
             hover_color=COLORS["primary_hover"],
-            height=45,
-            corner_radius=10
-        ).pack(pady=(20, 10), padx=20, fill="x")
+            text_color="#FFFFFF",
+            height=50,
+            width=250,
+            corner_radius=12
+        ).pack(pady=(25, 30))
     
     def open_ct_scans(self):
         """Navigate to CT Scans dashboard."""
@@ -185,16 +363,30 @@ class MedicalDashboardApp(ctk.CTk):
         self.ct_header.pack(fill="x")
         self.ct_header.pack_propagate(False)
         
+        # Add logo
+        logo_path = os.path.join(self.script_dir, "logo.png")
+        if os.path.exists(logo_path):
+            header_logo = Image.open(logo_path)
+            header_logo = header_logo.resize((60, 60), Image.Resampling.LANCZOS)
+            self.ct_header_logo_photo = ImageTk.PhotoImage(header_logo)
+            
+            logo_label = ctk.CTkLabel(
+                self.ct_header,
+                image=self.ct_header_logo_photo,
+                text=""
+            )
+            logo_label.pack(side="left", padx=15, pady=10)
+        
         back_btn = ctk.CTkButton(
             self.ct_header, text="← Back", command=self.go_back_from_ct,
             width=100, height=40, font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="transparent", border_width=2, border_color=COLORS["glow_cyan"],
             text_color=COLORS["text_primary"], hover_color=COLORS["bg_card"], corner_radius=10
         )
-        back_btn.pack(side="left", padx=20, pady=20)
+        back_btn.pack(side="left", padx=10, pady=20)
         
-        title = ctk.CTkLabel(self.ct_header, text="🩻 CT Scan Cancer Detection", 
-                             font=ctk.CTkFont(size=28, weight="bold"), text_color=COLORS["text_title"])
+        title = ctk.CTkLabel(self.ct_header, text="CT Scan Cancer Detection", 
+                             font=ctk.CTkFont(size=24, weight="bold"), text_color=COLORS["text_title"])
         title.pack(side="left", padx=10, pady=20)
     
     def go_back_from_ct(self):
@@ -206,163 +398,151 @@ class MedicalDashboardApp(ctk.CTk):
     
     def create_ct_dashboard(self):
         """Create complete CT Scan dashboard with image upload and analysis."""
-        self.ct_dashboard = ctk.CTkFrame(self, fg_color="transparent")
-        self.ct_dashboard.pack(fill="both", expand=True, padx=20, pady=20)
+        self.ct_dashboard = ctk.CTkFrame(self, fg_color=COLORS["bg_main"])
+        self.ct_dashboard.pack(fill="both", expand=True)
         
-        # Configure grid
-        self.ct_dashboard.grid_columnconfigure((0, 1), weight=1, uniform="col")
-        self.ct_dashboard.grid_rowconfigure((0, 1), weight=1, uniform="row")
+        # Add background image
+        bg_path = os.path.join(self.script_dir, "page_background.png")
+        if os.path.exists(bg_path):
+            self.update()
+            frame_width = self.winfo_width() or 1400
+            frame_height = self.winfo_height() or 800
+            
+            bg_image = Image.open(bg_path)
+            bg_image = bg_image.resize((frame_width, frame_height), Image.Resampling.LANCZOS)
+            self.ct_bg_photo = ImageTk.PhotoImage(bg_image)
+            
+            bg_label = ctk.CTkLabel(
+                self.ct_dashboard,
+                image=self.ct_bg_photo,
+                text=""
+            )
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        # Card 1: Image Upload & Preview
-        upload_card = self.create_card(self.ct_dashboard, 0, 0, "📤 Upload CT Scan")
+        # Card 1: Image Upload & Preview (top-left)
+        upload_card = ctk.CTkFrame(
+            self.ct_dashboard, 
+            fg_color=("#0a1628", "#0a1628"),
+            corner_radius=20, border_width=0,
+            width=400, height=280
+        )
+        upload_card.place(relx=0.26, rely=0.32, anchor="center")
+        upload_card.pack_propagate(False)
+        
+        ctk.CTkLabel(upload_card, text="📤 Upload CT Scan", font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color="#40C4E0").pack(anchor="w", padx=20, pady=(18, 12))
+        
         upload_content = ctk.CTkFrame(upload_card, fg_color="transparent")
         upload_content.pack(fill="both", expand=True, padx=20, pady=10)
         
-        ctk.CTkButton(
-            upload_content,
-            text="📁 Select CT Scan Image",
-            command=self.upload_ct_image,
-            height=50,
-            font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color=COLORS["glow_cyan"],
-            hover_color=COLORS["glow_blue"],
-            text_color=COLORS["bg_main"],
-            corner_radius=10
-        ).pack(pady=10, fill="x")
+        ctk.CTkButton(upload_content, text="📁 Select CT Scan Image", command=self.upload_ct_image,
+                      height=45, font=ctk.CTkFont(size=14, weight="bold"),
+                      fg_color="#40C4E0", hover_color=COLORS["glow_blue"],
+                      text_color=COLORS["bg_main"], corner_radius=10).pack(pady=8, fill="x")
         
-        # Image preview label
-        self.ct_image_label = ctk.CTkLabel(
-            upload_content,
-            text="No image loaded",
-            font=ctk.CTkFont(size=12),
-            text_color=COLORS["text_secondary"]
+        self.ct_image_label = ctk.CTkLabel(upload_content, text="No image loaded",
+                                            font=ctk.CTkFont(size=11), text_color=COLORS["text_secondary"])
+        self.ct_image_label.pack(pady=3)
+        
+        self.ct_preview_frame = ctk.CTkFrame(upload_content, fg_color=COLORS["bg_main"],
+                                              corner_radius=10, height=100)
+        self.ct_preview_frame.pack(pady=5, fill="x")
+        
+        # Card 2: Analysis Controls (top-right)
+        control_card = ctk.CTkFrame(
+            self.ct_dashboard, fg_color=("#0a1628", "#0a1628"),
+            corner_radius=20, border_width=0,
+            width=400, height=280
         )
-        self.ct_image_label.pack(pady=5)
+        control_card.place(relx=0.74, rely=0.32, anchor="center")
+        control_card.pack_propagate(False)
         
-        # Preview frame (will show image when loaded)
-        self.ct_preview_frame = ctk.CTkFrame(
-            upload_content,
-            fg_color=COLORS["bg_main"],
-            corner_radius=10,
-            border_width=2,
-            border_color=COLORS["glow_cyan"]
-        )
-        self.ct_preview_frame.pack(pady=10, fill="both", expand=True)
+        ctk.CTkLabel(control_card, text="⚙️ Analysis Controls", font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color="#40C4E0").pack(anchor="w", padx=20, pady=(18, 12))
         
-        # Card 2: Analysis Controls
-        control_card = self.create_card(self.ct_dashboard, 0, 1, "⚙️ Analysis Controls")
         control_content = ctk.CTkFrame(control_card, fg_color="transparent")
         control_content.pack(fill="both", expand=True, padx=20, pady=10)
         
-        # Model status
         model_status = "✅ Model Loaded" if self.ct_predictor.model else "❌ Model Not Loaded"
         status_color = COLORS["success"] if self.ct_predictor.model else COLORS["danger"]
         
-        ctk.CTkLabel(
-            control_content,
-            text="Model Status:",
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(size=12)
-        ).pack(anchor="w", pady=(10, 2))
+        ctk.CTkLabel(control_content, text="Model Status:", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=11)).pack(anchor="w", pady=(5, 2))
+        ctk.CTkLabel(control_content, text=model_status, text_color=status_color,
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", pady=(0, 15))
         
-        ctk.CTkLabel(
-            control_content,
-            text=model_status,
-            text_color=status_color,
-            font=ctk.CTkFont(size=14, weight="bold")
-        ).pack(anchor="w", pady=(0, 20))
+        ctk.CTkButton(control_content, text="🔬 Analyze CT Scan", command=self.analyze_ct_image,
+                      height=45, font=ctk.CTkFont(size=14, weight="bold"),
+                      fg_color=COLORS["primary"], hover_color=COLORS["primary_hover"],
+                      corner_radius=10).pack(fill="x", pady=8)
         
-        # Analyze button
-        ctk.CTkButton(
-            control_content,
-            text="🔬 Analyze CT Scan",
-            command=self.analyze_ct_image,
-            height=50,
-            font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color=COLORS["primary"],
-            hover_color=COLORS["primary_hover"],
-            corner_radius=10
-        ).pack(fill="x", pady=10)
+        ctk.CTkButton(control_content, text="🗑️ Clear Image", command=self.clear_ct_image,
+                      height=35, fg_color="transparent", border_width=2,
+                      border_color="#40C4E0", text_color=COLORS["text_primary"],
+                      corner_radius=10).pack(fill="x", pady=5)
         
-        # Clear button
-        ctk.CTkButton(
-            control_content,
-            text="🗑️ Clear Image",
-            command=self.clear_ct_image,
-            height=40,
-            fg_color="transparent",
-            border_width=2,
-            border_color=COLORS["glow_cyan"],
-            text_color=COLORS["text_primary"],
-            corner_radius=10
-        ).pack(fill="x", pady=10)
+        # Card 3: Results (bottom-left)
+        result_card = ctk.CTkFrame(
+            self.ct_dashboard, fg_color=("#0a1628", "#0a1628"),
+            corner_radius=20, border_width=0,
+            width=400, height=260
+        )
+        result_card.place(relx=0.26, rely=0.74, anchor="center")
+        result_card.pack_propagate(False)
         
-        # Card 3: Results
-        result_card = self.create_card(self.ct_dashboard, 1, 0, "📊 Analysis Results")
+        ctk.CTkLabel(result_card, text="📊 Analysis Results", font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color="#40C4E0").pack(anchor="w", padx=20, pady=(18, 12))
+        
         result_content = ctk.CTkFrame(result_card, fg_color="transparent")
-        result_content.pack(fill="both", expand=True, padx=20, pady=20)
+        result_content.pack(fill="both", expand=True, padx=20, pady=10)
         
-        ctk.CTkLabel(
-            result_content,
-            text="Diagnosis:",
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(size=14)
-        ).pack(pady=(20, 5))
+        ctk.CTkLabel(result_content, text="Diagnosis:", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=12)).pack(pady=(10, 3))
         
-        self.ct_result_label = ctk.CTkLabel(
-            result_content,
-            textvariable=self.ct_result_text,
-            font=ctk.CTkFont(size=32, weight="bold"),
-            text_color=COLORS["text_primary"]
+        self.ct_result_label = ctk.CTkLabel(result_content, textvariable=self.ct_result_text,
+                                            font=ctk.CTkFont(size=28, weight="bold"),
+                                            text_color=COLORS["text_primary"])
+        self.ct_result_label.pack(pady=5)
+        
+        ctk.CTkLabel(result_content, text="Confidence:", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=12)).pack(pady=(8, 3))
+        
+        self.ct_confidence_label = ctk.CTkLabel(result_content, textvariable=self.ct_confidence_text,
+                                                 font=ctk.CTkFont(size=22, weight="bold"),
+                                                 text_color="#40C4E0")
+        self.ct_confidence_label.pack(pady=3)
+        
+        # Card 4: Batch Processing (bottom-right)
+        batch_card = ctk.CTkFrame(
+            self.ct_dashboard, fg_color=("#0a1628", "#0a1628"),
+            corner_radius=20, border_width=0,
+            width=400, height=260
         )
-        self.ct_result_label.pack(pady=10)
+        batch_card.place(relx=0.74, rely=0.74, anchor="center")
+        batch_card.pack_propagate(False)
         
-        # Confidence display
-        ctk.CTkLabel(
-            result_content,
-            text="Confidence:",
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(size=14)
-        ).pack(pady=(10, 5))
+        ctk.CTkLabel(batch_card, text="📂 Batch Processing", font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color="#40C4E0").pack(anchor="w", padx=20, pady=(18, 12))
         
-        self.ct_confidence_label = ctk.CTkLabel(
-            result_content,
-            textvariable=self.ct_confidence_text,
-            font=ctk.CTkFont(size=24, weight="bold"),
-            text_color=COLORS["glow_cyan"]
-        )
-        self.ct_confidence_label.pack(pady=5)
-        
-        # Card 4: Batch Processing
-        batch_card = self.create_card(self.ct_dashboard, 1, 1, "📂 Batch Processing")
         batch_content = ctk.CTkScrollableFrame(batch_card, fg_color="transparent")
         batch_content.pack(fill="both", expand=True, padx=20, pady=10)
         
-        ctk.CTkLabel(
-            batch_content,
-            text="Upload multiple CT scans for batch analysis",
-            text_color=COLORS["text_secondary"],
-            font=ctk.CTkFont(size=12)
-        ).pack(anchor="w", pady=5)
+        ctk.CTkLabel(batch_content, text="Upload multiple CT scans", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=11)).pack(anchor="w", pady=3)
         
-        ctk.CTkButton(
-            batch_content,
-            text="📁 Select Multiple Images",
-            command=self.upload_ct_batch,
-            height=40,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color=COLORS["glow_blue"],
-            hover_color=COLORS["primary"],
-            corner_radius=10
-        ).pack(fill="x", pady=5)
+        ctk.CTkButton(batch_content, text="📁 Select Multiple Images", command=self.upload_ct_batch,
+                      height=35, font=ctk.CTkFont(size=12, weight="bold"),
+                      fg_color=COLORS["glow_blue"], hover_color=COLORS["primary"],
+                      corner_radius=10).pack(fill="x", pady=4)
         
-        self.ct_batch_status = ctk.CTkLabel(
-            batch_content,
-            text="No files selected",
-            text_color=COLORS["text_secondary"],
-            wraplength=250
-        )
-        self.ct_batch_status.pack(pady=10)
+        ctk.CTkButton(batch_content, text="📂 Select DICOM Folder", command=self.upload_ct_folder,
+                      height=35, font=ctk.CTkFont(size=12, weight="bold"),
+                      fg_color="#40C4E0", hover_color=COLORS["glow_blue"],
+                      text_color=COLORS["bg_main"], corner_radius=10).pack(fill="x", pady=4)
+        
+        self.ct_batch_status = ctk.CTkLabel(batch_content, text="No files selected",
+                                            text_color=COLORS["text_secondary"], wraplength=200)
+        self.ct_batch_status.pack(pady=5)
 
     # ============== LAB TESTS MODULE ==============
     def create_header(self):
@@ -370,16 +550,30 @@ class MedicalDashboardApp(ctk.CTk):
         self.header.pack(fill="x")
         self.header.pack_propagate(False)
         
+        # Add logo
+        logo_path = os.path.join(self.script_dir, "logo.png")
+        if os.path.exists(logo_path):
+            header_logo = Image.open(logo_path)
+            header_logo = header_logo.resize((60, 60), Image.Resampling.LANCZOS)
+            self.lab_header_logo_photo = ImageTk.PhotoImage(header_logo)
+            
+            logo_label = ctk.CTkLabel(
+                self.header,
+                image=self.lab_header_logo_photo,
+                text=""
+            )
+            logo_label.pack(side="left", padx=15, pady=10)
+        
         back_btn = ctk.CTkButton(
             self.header, text="← Back", command=self.go_back_to_selection,
             width=100, height=40, font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="transparent", border_width=2, border_color=COLORS["glow_cyan"],
             text_color=COLORS["text_primary"], hover_color=COLORS["bg_card"], corner_radius=10
         )
-        back_btn.pack(side="left", padx=20, pady=20)
+        back_btn.pack(side="left", padx=10, pady=20)
         
-        title = ctk.CTkLabel(self.header, text="🏥 Medical Diagnostics Dashboard", 
-                             font=ctk.CTkFont(size=28, weight="bold"), text_color=COLORS["text_title"])
+        title = ctk.CTkLabel(self.header, text="Medical Diagnostics Dashboard", 
+                             font=ctk.CTkFont(size=24, weight="bold"), text_color=COLORS["text_title"])
         title.pack(side="left", padx=10, pady=20)
     
     def go_back_to_selection(self):
@@ -391,29 +585,60 @@ class MedicalDashboardApp(ctk.CTk):
 
     def create_dashboard(self):
         self.dashboard = ctk.CTkFrame(self, fg_color="transparent")
-        self.dashboard.pack(fill="both", expand=True, padx=20, pady=20)
+        self.dashboard.pack(fill="both", expand=True)
         
-        self.dashboard.grid_columnconfigure((0, 1), weight=1, uniform="col")
-        self.dashboard.grid_rowconfigure((0, 1), weight=1, uniform="row")
+        # Add background image
+        bg_path = os.path.join(self.script_dir, "page_background.png")
+        if os.path.exists(bg_path):
+            self.update()
+            frame_width = self.winfo_width() or 1400
+            frame_height = self.winfo_height() or 800
+            
+            bg_image = Image.open(bg_path)
+            bg_image = bg_image.resize((frame_width, frame_height), Image.Resampling.LANCZOS)
+            self.lab_bg_photo = ImageTk.PhotoImage(bg_image)
+            
+            bg_label = ctk.CTkLabel(
+                self.dashboard,
+                image=self.lab_bg_photo,
+                text=""
+            )
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        self.create_patient_input_card(row=0, col=0)
-        self.create_model_settings_card(row=0, col=1)
-        self.create_result_card(row=1, col=0)
-        self.create_batch_card(row=1, col=1)
+        # Cards placed directly on dashboard (no intermediate frame)
+        self.create_patient_input_card()
+        self.create_model_settings_card()
+        self.create_result_card()
+        self.create_batch_card()
 
-    def create_card(self, parent, row, col, title):
-        card = ctk.CTkFrame(parent, fg_color=COLORS["bg_card"], corner_radius=15,
-                           border_width=2, border_color=COLORS["glow_cyan"])
-        card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+    def create_lab_card(self, title, relx, rely, width=400, height=280, border_color=None):
+        """Create a professional glassmorphism card."""
+        # No borders - background shows through
         
-        title_label = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=18, weight="bold"),
-                                   text_color=COLORS["text_title"])
-        title_label.pack(anchor="w", padx=20, pady=(15, 10))
+        card = ctk.CTkFrame(
+            self.dashboard, 
+            fg_color=("#0a1628", "#0a1628"),  # Dark blue transparent
+            corner_radius=20,
+            border_width=0,  # No border
+            width=width,
+            height=height
+        )
+        card.place(relx=relx, rely=rely, anchor="center")
+        card.pack_propagate(False)
+        
+        # Title with icon
+        title_label = ctk.CTkLabel(
+            card, 
+            text=title, 
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#40C4E0"  # Cyan title
+        )
+        title_label.pack(anchor="w", padx=20, pady=(18, 12))
         return card
 
     # ============== CARD 1: PATIENT INPUT ==============
-    def create_patient_input_card(self, row, col):
-        card = self.create_card(self.dashboard, row, col, "📋 Patient Data Input")
+    def create_patient_input_card(self):
+        card = self.create_lab_card("📋 Patient Data Input", relx=0.26, rely=0.32, height=280)
         
         input_frame = ctk.CTkScrollableFrame(card, fg_color="transparent")
         input_frame.pack(fill="both", expand=True, padx=15, pady=10)
@@ -449,8 +674,8 @@ class MedicalDashboardApp(ctk.CTk):
                 entry.bind("<Return>", lambda e: self.predict())
 
     # ============== CARD 2: MODEL SETTINGS ==============
-    def create_model_settings_card(self, row, col):
-        card = self.create_card(self.dashboard, row, col, "⚙️ Model Settings")
+    def create_model_settings_card(self):
+        card = self.create_lab_card("⚙️ Model Settings", relx=0.74, rely=0.32, height=280)
         content = ctk.CTkFrame(card, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=20, pady=10)
         
@@ -474,34 +699,34 @@ class MedicalDashboardApp(ctk.CTk):
         ).pack(fill="x", pady=10)
 
     # ============== CARD 3: RESULT DISPLAY ==============
-    def create_result_card(self, row, col):
-        card = self.create_card(self.dashboard, row, col, "📊 Analysis Result")
+    def create_result_card(self):
+        card = self.create_lab_card("📊 Analysis Result", relx=0.26, rely=0.74, height=260)
         content = ctk.CTkFrame(card, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=20, pady=20)
+        content.pack(fill="both", expand=True, padx=20, pady=10)
         
         ctk.CTkLabel(content, text="Status:", text_color=COLORS["text_secondary"], 
-                     font=ctk.CTkFont(size=14)).pack(pady=(20, 5))
+                     font=ctk.CTkFont(size=13)).pack(pady=(10, 3))
         
         self.result_label = ctk.CTkLabel(
             content, textvariable=self.result_text,
-            font=ctk.CTkFont(size=32, weight="bold"), text_color=COLORS["text_primary"]
+            font=ctk.CTkFont(size=26, weight="bold"), text_color=COLORS["text_primary"]
         )
-        self.result_label.pack(pady=10)
+        self.result_label.pack(pady=5)
         
         # Confidence display
         ctk.CTkLabel(content, text="Confidence:", text_color=COLORS["text_secondary"], 
-                     font=ctk.CTkFont(size=14)).pack(pady=(10, 5))
+                     font=ctk.CTkFont(size=13)).pack(pady=(8, 3))
         
         self.confidence_text = ctk.StringVar(value="—")
         self.confidence_label = ctk.CTkLabel(
             content, textvariable=self.confidence_text,
-            font=ctk.CTkFont(size=24, weight="bold"), text_color=COLORS["glow_cyan"]
+            font=ctk.CTkFont(size=22, weight="bold"), text_color=COLORS["glow_cyan"]
         )
-        self.confidence_label.pack(pady=5)
+        self.confidence_label.pack(pady=3)
 
     # ============== CARD 4: BATCH PROCESSING ==============
-    def create_batch_card(self, row, col):
-        card = self.create_card(self.dashboard, row, col, "📂 Batch Processing")
+    def create_batch_card(self):
+        card = self.create_lab_card("📂 Batch Processing", relx=0.74, rely=0.74, height=260)
         content = ctk.CTkScrollableFrame(card, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=20, pady=10)
         
@@ -753,6 +978,8 @@ class MedicalDashboardApp(ctk.CTk):
         """Upload a single CT scan image."""
         file_path = ctk.filedialog.askopenfilename(
             filetypes=[
+                ("Medical Images", "*.dcm *.png *.jpg *.jpeg *.bmp"),
+                ("DICOM Files", "*.dcm"),
                 ("Image Files", "*.png *.jpg *.jpeg *.bmp"),
                 ("All Files", "*.*")
             ]
@@ -770,7 +997,26 @@ class MedicalDashboardApp(ctk.CTk):
             
             # Show preview
             from PIL import Image, ImageTk
-            img = Image.open(file_path)
+            import numpy as np
+            
+            # Handle DICOM files
+            if file_path.lower().endswith('.dcm'):
+                try:
+                    import pydicom
+                    ds = pydicom.dcmread(file_path)
+                    img_array = ds.pixel_array
+                    
+                    # Normalize to 0-255
+                    img_array = img_array.astype(np.float32)
+                    img_array = (img_array - img_array.min()) / (img_array.max() - img_array.min()) * 255
+                    img_array = img_array.astype(np.uint8)
+                    
+                    img = Image.fromarray(img_array).convert('RGB')
+                except Exception as e:
+                    messagebox.showerror("DICOM Error", f"Failed to read DICOM: {str(e)}")
+                    return
+            else:
+                img = Image.open(file_path)
             
             # Resize for preview (maintain aspect ratio)
             max_size = (300, 300)
@@ -818,11 +1064,15 @@ class MedicalDashboardApp(ctk.CTk):
             if is_cancer:
                 self.ct_result_text.set("⚠️ CANCER DETECTED")
                 self.ct_result_label.configure(text_color=COLORS["danger"])
+                # Confidence = probability of cancer (already correct)
+                display_confidence = confidence
             else:
                 self.ct_result_text.set("✓ NORMAL")
                 self.ct_result_label.configure(text_color=COLORS["success"])
+                # Confidence = probability of normal = 1 - probability of cancer
+                display_confidence = 100 - confidence
             
-            self.ct_confidence_text.set(f"{confidence:.1f}%")
+            self.ct_confidence_text.set(f"{display_confidence:.1f}%")
             
         except Exception as e:
             messagebox.showerror("Analysis Error", str(e))
@@ -845,6 +1095,8 @@ class MedicalDashboardApp(ctk.CTk):
         """Upload multiple CT images for batch processing."""
         file_paths = ctk.filedialog.askopenfilenames(
             filetypes=[
+                ("Medical Images", "*.dcm *.png *.jpg *.jpeg *.bmp"),
+                ("DICOM Files", "*.dcm"),
                 ("Image Files", "*.png *.jpg *.jpeg *.bmp"),
                 ("All Files", "*.*")
             ]
@@ -879,7 +1131,57 @@ class MedicalDashboardApp(ctk.CTk):
             
         except Exception as e:
             messagebox.showerror("Batch Error", str(e))
-
+    
+    def upload_ct_folder(self):
+        """Upload a DICOM folder for batch processing."""
+        folder_path = ctk.filedialog.askdirectory(
+            title="Select DICOM Folder (e.g., Pancreas-XXXXX)"
+        )
+        if not folder_path:
+            return
+        
+        if not self.ct_predictor.model:
+            messagebox.showerror("Model Error", "CT Model is not loaded.")
+            return
+        
+        try:
+            # Find all DICOM files in the folder (and subfolders)
+            dcm_files = []
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.lower().endswith('.dcm'):
+                        dcm_files.append(os.path.join(root, file))
+            
+            if not dcm_files:
+                messagebox.showwarning("No DICOM Files", "No .dcm files found in the selected folder.")
+                return
+            
+            self.ct_batch_status.configure(text=f"🔄 Processing {len(dcm_files)} DICOM files...")
+            self.update()
+            
+            # Analyze batch
+            results = self.ct_predictor.predict_batch(dcm_files)
+            
+            # Save results
+            import pandas as pd
+            results_df = pd.DataFrame(results)
+            folder_name = os.path.basename(folder_path)
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            save_path = os.path.join(base_path, f"ct_{folder_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+            results_df.to_csv(save_path, index=False)
+            
+            # Count results
+            cancer_count = sum(1 for r in results if r["Diagnosis"] == "CANCER")
+            total = len(results)
+            
+            self.ct_batch_status.configure(
+                text=f"✅ Folder: {folder_name}\n📊 Analyzed: {total} images\n🔴 Cancer: {cancer_count}\n✅ Normal: {total - cancer_count}\n📁 Saved!"
+            )
+            
+            messagebox.showinfo("Folder Analysis Complete", f"Folder: {folder_name}\nTotal: {total} images\nCancer: {cancer_count}\nNormal: {total - cancer_count}\n\nResults saved to:\n{save_path}")
+            
+        except Exception as e:
+            messagebox.showerror("Folder Error", str(e))
 
 if __name__ == "__main__":
     app = MedicalDashboardApp()
