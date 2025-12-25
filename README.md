@@ -30,6 +30,18 @@
 
 ---
 
+## 🎬 Demo Video
+
+<div align="center">
+
+![Hope Detectors Demo](assets/demo.gif)
+
+*Watch Hope Detectors in action - AI-powered cancer detection at your fingertips!*
+
+</div>
+
+---
+
 ## ✨ Features
 
 ### 🩻 CT Scan Analysis Module
@@ -59,19 +71,7 @@
 
 ---
 
-## 🖼️ Screenshots
-
-<div align="center">
-
-| Selection Page | Lab Tests Dashboard |
-|:---:|:---:|
-| ![Selection](assets/page_background.png) | Professional dark theme with glassmorphism cards |
-
-</div>
-
----
-
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Hope-Detectors/
