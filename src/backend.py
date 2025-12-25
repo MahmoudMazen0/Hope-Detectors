@@ -70,22 +70,6 @@ AVAILABLE_MODELS = {
     
     # Random Forest
     "Random Forest": "models/lab_tests/random_forest/random_forest_aggressive.pkl",
-    
-    # LightGBM Models
-    "LightGBM Best": "models/lab_tests/lightgbm/lgb_best_model.pkl",
-    "LightGBM Moderate": "models/lab_tests/lightgbm/lgb_model_1_moderate.pkl",
-    "LightGBM Aggressive": "models/lab_tests/lightgbm/lgb_model_2_aggressive.pkl",
-    "LightGBM Finetuned": "models/lab_tests/lightgbm/lgb_model_3_finetuned.pkl",
-    
-    # CatBoost Models
-    "CatBoost Best": "models/lab_tests/catboost/cat_best_model.pkl",
-    "CatBoost Moderate": "models/lab_tests/catboost/cat_model_1_moderate.pkl",
-    "CatBoost Aggressive": "models/lab_tests/catboost/cat_model_2_aggressive.pkl",
-    "CatBoost Finetuned": "models/lab_tests/catboost/cat_model_3_finetuned.pkl",
-    
-    # Stacked Models
-    "Stacked Meta Model": "models/lab_tests/stacked/stacked_meta_model.pkl",
-    "Stacked Meta Model (15 Features)": "models/lab_tests/stacked/stacked_meta_model_15features.pkl",
 }
 
 
