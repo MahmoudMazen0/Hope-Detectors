@@ -144,8 +144,13 @@ class MedicalDashboardApp(ctk.CTk):
             frame_width = self.winfo_width() or 1400
             frame_height = self.winfo_height() or 800
             
-            bg_image = Image.open(bg_path)
+            bg_image = Image.open(bg_path).convert("RGBA")
             bg_image = bg_image.resize((frame_width, frame_height), Image.Resampling.LANCZOS)
+            
+            # Reduce opacity to 40% for better card visibility
+            dark_overlay = Image.new("RGBA", bg_image.size, (11, 17, 32, 153))  # #0B1120 with 60% opacity overlay
+            bg_image = Image.alpha_composite(bg_image, dark_overlay)
+            
             self.page_bg_photo = ImageTk.PhotoImage(bg_image)
             
             bg_label = ctk.CTkLabel(
