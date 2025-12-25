@@ -451,5 +451,89 @@ class CTPredictor:
                     "Confidence": "N/A",
                     "Probability": str(e)
                 })
-        
         return results
+
+
+# ============== ANALYSIS HISTORY ==============
+import json
+
+class AnalysisHistory:
+    """Class to manage patient analysis history."""
+    
+    def __init__(self, base_path=None):
+        if base_path:
+            self.base_path = base_path
+        else:
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                # For EXE, save in same directory as executable
+                self.base_path = os.path.dirname(sys.executable)
+            else:
+                self.base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        self.history_file = os.path.join(self.base_path, "output", "analysis_history.json")
+        self._ensure_output_dir()
+    
+    def _ensure_output_dir(self):
+        """Ensure output directory exists."""
+        output_dir = os.path.dirname(self.history_file)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+    
+    def add_record(self, patient_name, analysis_type, model_used, diagnosis, confidence, input_data=None):
+        """Add a new analysis record to history."""
+        record = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "patient_name": patient_name,
+            "analysis_type": analysis_type,
+            "model_used": model_used,
+            "diagnosis": diagnosis,
+            "confidence": round(confidence, 2),
+            "input_data": input_data or {}
+        }
+        
+        history = self.load_history()
+        history.append(record)
+        self._save_history(history)
+        return record
+    
+    def load_history(self):
+        """Load history from file."""
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return []
+    
+    def _save_history(self, history):
+        """Save history to file."""
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving history: {e}")
+    
+    def clear_history(self):
+        """Clear all history."""
+        self._save_history([])
+    
+    def export_to_csv(self, output_path=None):
+        """Export history to CSV file."""
+        history = self.load_history()
+        if not history:
+            return None, "No history to export"
+        
+        if output_path is None:
+            output_path = os.path.join(self.base_path, "output", f"history_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        
+        try:
+            df = pd.DataFrame(history)
+            df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            return output_path, "Export successful"
+        except Exception as e:
+            return None, f"Export failed: {e}"
+    
+    def get_record_count(self):
+        """Get total number of records."""
+        return len(self.load_history())

@@ -48,7 +48,7 @@ from PIL import Image, ImageTk
 from datetime import datetime
 
 # Import backend (same directory)
-from backend import MedicalPredictor, AVAILABLE_MODELS, load_patient_file, save_results, CTPredictor
+from backend import MedicalPredictor, AVAILABLE_MODELS, load_patient_file, save_results, CTPredictor, AnalysisHistory
 
 # Configuration
 ctk.set_appearance_mode("Dark")
@@ -88,8 +88,13 @@ class MedicalDashboardApp(ctk.CTk):
         self.configure(fg_color=COLORS["bg_main"])
         
         # Get script directory and project root for paths
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.project_root = os.path.dirname(self.script_dir)  # Go up from src/ to project root
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # Running in PyInstaller bundle
+            self.project_root = sys._MEIPASS
+        else:
+            # Running in normal Python environment
+            self.script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.project_root = os.path.dirname(self.script_dir)  # Go up from src/ to project root
         self.assets_dir = os.path.join(self.project_root, "assets")
         
         # Backend predictor
@@ -119,6 +124,9 @@ class MedicalDashboardApp(ctk.CTk):
         
         # Animation state
         self.animation_id = None
+        
+        # History manager
+        self.history_manager = AnalysisHistory()
         
         # Show selection page directly (no splash screen)
         self.create_selection_page()
@@ -517,6 +525,15 @@ class MedicalDashboardApp(ctk.CTk):
         title = ctk.CTkLabel(self.header, text="Medical Diagnostics Dashboard", 
                              font=ctk.CTkFont(size=24, weight="bold"), text_color=COLORS["text_title"])
         title.pack(side="left", padx=10, pady=20)
+        
+        # History button
+        history_btn = ctk.CTkButton(
+            self.header, text="📋 History", command=self.show_history_popup,
+            width=120, height=40, font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=COLORS["glow_blue"], hover_color=COLORS["primary_hover"],
+            text_color="white", corner_radius=10
+        )
+        history_btn.pack(side="right", padx=15, pady=20)
     
     def go_back_to_selection(self):
         if hasattr(self, 'header'):
@@ -756,12 +773,26 @@ class MedicalDashboardApp(ctk.CTk):
             if is_cancer:
                 self.result_text.set("CANCER DETECTED")
                 self.result_label.configure(text_color=COLORS["danger"])
+                diagnosis = "CANCER"
             else:
                 self.result_text.set("NORMAL")
                 self.result_label.configure(text_color=COLORS["success"])
+                diagnosis = "Healthy"
             
             # Display confidence
             self.confidence_text.set(f"{confidence:.1f}%")
+            
+            # Save to history
+            patient_name = self.patient_var.get() if hasattr(self, 'patient_var') and self.patient_var.get() else "Manual Entry"
+            self.history_manager.add_record(
+                patient_name=patient_name,
+                analysis_type="Lab Test",
+                model_used=self.selected_model_name.get(),
+                diagnosis=diagnosis,
+                confidence=confidence,
+                input_data={"age": age, "sex": sex, "creatinine": creat, "bilirubin": bili, 
+                           "glucose": glucose, "urine_volume": u_vol, "urine_pH": u_ph}
+            )
 
         except ValueError as ve:
             messagebox.showwarning("Input Error", str(ve))
@@ -1016,6 +1047,18 @@ class MedicalDashboardApp(ctk.CTk):
             
             self.ct_confidence_text.set(f"{display_confidence:.1f}%")
             
+            # Save to history
+            image_name = os.path.basename(self.ct_image_path) if self.ct_image_path else "Unknown"
+            diagnosis = "CANCER" if is_cancer else "Normal"
+            self.history_manager.add_record(
+                patient_name=image_name,
+                analysis_type="CT Scan",
+                model_used="EfficientNetB2",
+                diagnosis=diagnosis,
+                confidence=display_confidence,
+                input_data={"image_path": self.ct_image_path}
+            )
+            
         except Exception as e:
             messagebox.showerror("Analysis Error", str(e))
     
@@ -1124,6 +1167,104 @@ class MedicalDashboardApp(ctk.CTk):
             
         except Exception as e:
             messagebox.showerror("Folder Error", str(e))
+    
+    # ============== HISTORY POPUP ==============
+    def show_history_popup(self):
+        """Show history popup window with analysis records."""
+        popup = ctk.CTkToplevel(self)
+        popup.title("Analysis History")
+        popup.geometry("900x600")
+        popup.configure(fg_color=COLORS["bg_main"])
+        popup.transient(self)
+        popup.grab_set()
+        
+        # Header
+        header_frame = ctk.CTkFrame(popup, fg_color=COLORS["bg_header"], height=60)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+        
+        ctk.CTkLabel(header_frame, text="📋 Analysis History", 
+                     font=ctk.CTkFont(size=20, weight="bold"),
+                     text_color=COLORS["text_title"]).pack(side="left", padx=20, pady=15)
+        
+        count = self.history_manager.get_record_count()
+        ctk.CTkLabel(header_frame, text=f"Total Records: {count}", 
+                     font=ctk.CTkFont(size=14),
+                     text_color=COLORS["text_secondary"]).pack(side="right", padx=20, pady=15)
+        
+        # Content frame with scrollable area
+        content_frame = ctk.CTkScrollableFrame(popup, fg_color=COLORS["bg_card"])
+        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Load history
+        history = self.history_manager.load_history()
+        
+        if not history:
+            ctk.CTkLabel(content_frame, text="No analysis history yet.\nStart analyzing patients to build history!",
+                        font=ctk.CTkFont(size=16), text_color=COLORS["text_secondary"]).pack(pady=50)
+        else:
+            # Table header
+            header_row = ctk.CTkFrame(content_frame, fg_color=COLORS["bg_header"])
+            header_row.pack(fill="x", pady=(0, 5))
+            
+            cols = ["Time", "Patient", "Type", "Model", "Diagnosis", "Confidence"]
+            widths = [150, 120, 80, 150, 100, 80]
+            for col, w in zip(cols, widths):
+                ctk.CTkLabel(header_row, text=col, width=w, font=ctk.CTkFont(size=12, weight="bold"),
+                            text_color=COLORS["glow_cyan"]).pack(side="left", padx=5, pady=8)
+            
+            # Data rows (newest first)
+            for record in reversed(history[-50:]):  # Show last 50 records
+                row = ctk.CTkFrame(content_frame, fg_color="transparent")
+                row.pack(fill="x", pady=2)
+                
+                diagnosis = record.get("diagnosis", "N/A")
+                row_color = COLORS["danger"] if diagnosis == "CANCER" else COLORS["success"] if diagnosis == "Healthy" else COLORS["text_secondary"]
+                
+                values = [
+                    record.get("timestamp", "N/A")[:16],
+                    record.get("patient_name", "Unknown")[:15],
+                    record.get("analysis_type", "N/A")[:10],
+                    record.get("model_used", "N/A")[:20],
+                    diagnosis,
+                    f"{record.get('confidence', 0):.1f}%"
+                ]
+                for val, w in zip(values, widths):
+                    lbl = ctk.CTkLabel(row, text=str(val), width=w, font=ctk.CTkFont(size=11),
+                                      text_color=row_color if val == diagnosis else COLORS["text_primary"])
+                    lbl.pack(side="left", padx=5, pady=5)
+        
+        # Button frame
+        btn_frame = ctk.CTkFrame(popup, fg_color=COLORS["bg_header"], height=60)
+        btn_frame.pack(fill="x", side="bottom")
+        btn_frame.pack_propagate(False)
+        
+        ctk.CTkButton(btn_frame, text="📤 Export CSV", command=self.export_history,
+                     fg_color=COLORS["glow_blue"], width=120).pack(side="left", padx=20, pady=12)
+        
+        ctk.CTkButton(btn_frame, text="🗑️ Clear All", command=lambda: self.clear_history(popup),
+                     fg_color=COLORS["danger"], width=120).pack(side="left", padx=10, pady=12)
+        
+        ctk.CTkButton(btn_frame, text="Close", command=popup.destroy,
+                     fg_color="transparent", border_width=2, border_color=COLORS["text_secondary"],
+                     width=100).pack(side="right", padx=20, pady=12)
+    
+    def export_history(self):
+        """Export history to CSV."""
+        path, msg = self.history_manager.export_to_csv()
+        if path:
+            messagebox.showinfo("Export Success", f"History exported to:\n{path}")
+        else:
+            messagebox.showwarning("Export", msg)
+    
+    def clear_history(self, popup=None):
+        """Clear all history."""
+        if messagebox.askyesno("Clear History", "Are you sure you want to delete all history records?"):
+            self.history_manager.clear_history()
+            messagebox.showinfo("Cleared", "History has been cleared.")
+            if popup:
+                popup.destroy()
+                self.show_history_popup()  # Refresh
 
 if __name__ == "__main__":
     app = MedicalDashboardApp()
