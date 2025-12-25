@@ -70,6 +70,12 @@ AVAILABLE_MODELS = {
     
     # Random Forest
     "Random Forest": "models/lab_tests/random_forest/random_forest_aggressive.pkl",
+    
+    # CatBoost Models
+    "CatBoost Best": "models/lab_tests/catboost/cat_best_model.pkl",
+    "CatBoost Moderate": "models/lab_tests/catboost/cat_model_1_moderate.pkl",
+    "CatBoost Aggressive": "models/lab_tests/catboost/cat_model_2_aggressive.pkl",
+    "CatBoost Finetuned": "models/lab_tests/catboost/cat_model_3_finetuned.pkl",
 }
 
 
